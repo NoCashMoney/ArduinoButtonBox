@@ -1,7 +1,7 @@
 // Simple example application that shows how to read four Arduino
 // digital pins and map them to the USB Joystick library.
 //
-// Ground digital pins 9, 10, 11, and 12 to press the joystick 
+// Ground digital pins 9, 10, 11, and 12 to press the joystick
 // buttons 0, 1, 2, and 3.
 //
 // NOTE: This sketch file is for use with Arduino Leonardo and
@@ -12,7 +12,9 @@
 //--------------------------------------------------------------------
 
 #include <Joystick.h>
+#include <SoftwareSerial.h>
 
+SoftwareSerial mySerial(10, 11);
 Joystick_ Joystick;
 
 void setup() {
@@ -30,26 +32,32 @@ void setup() {
   pinMode(8, INPUT_PULLUP); // Column 5
 
   // Initialize Rotary Encoder Pins
-  pinMode(1, INPUT_PULLUP); // Encoder 1, 1
-  pinMode(0, INPUT_PULLUP); // Encoder 1, 2
-  pinMode(2, INPUT_PULLUP); // Encoder 2, 1
-  pinMode(3, INPUT_PULLUP); // Encoder 2, 2
-  pinMode(4, INPUT_PULLUP); // Encoder 3, 1
-  pinMode(5, INPUT_PULLUP); // Encoder 3, 2
-  pinMode(6, INPUT_PULLUP); // Encoder 4, 1
-  pinMode(7, INPUT_PULLUP); // Encoder 4, 2
+  pinMode(7, INPUT_PULLUP); // Encoder 1, 1
+  pinMode(6, INPUT_PULLUP); // Encoder 1, 2
+  pinMode(5, INPUT_PULLUP); // Encoder 2, 1
+  pinMode(4, INPUT_PULLUP); // Encoder 2, 2
+  pinMode(3, INPUT_PULLUP); // Encoder 3, 1
+  pinMode(2, INPUT_PULLUP); // Encoder 3, 2
+  pinMode(0, INPUT_PULLUP); // Encoder 4, 1
+  pinMode(1, INPUT_PULLUP); // Encoder 4, 2
+
+  // Open SoftwareSerial for debugging
+  Serial.begin(57600);
+  while (!Serial) {
+    ; // wait for serial port to connect. Needed for native USB port only
+  }
 
   // Initialize Joystick Library
   Joystick.begin();
 }
 
-// Raw, Column, Button count
-int rawCount = 5;
+// Row, Column, Button count
+int rowCount = 5;
 int columnCount = 5;
 int buttonCount = 24;
 
-// Raw, Column index
-int rawPinList[5] = {21, 20, 19, 18, 15};
+// Row, Column index
+int rowPinList[5] = {21, 20, 19, 18, 15};
 int columnPinList[5] = {14, 16, 10, 9, 8};
 
 // Current state of the button
@@ -60,16 +68,22 @@ int lastButtonState[5][5] = {{0,}, {0,}, {0,}, {0,}, {0,}};
 
 void pollingButtonScan()
 {
-  for(int raw = 0; raw < rawCount; raw++)
+  for(int row = 0; row < rowCount; row++)
   {
-    digitalWrite(rawPinList[raw], LOW);
+    digitalWrite(rowPinList[row], LOW);
 
     for(int column = 0; column < columnCount; column++)
     {
-      currentButtonState[raw][column] = !digitalRead(columnPinList[column]);
+      currentButtonState[row][column] = !digitalRead(columnPinList[column]);
+      Serial.print("Row - ");
+      Serial.print(row);
+      Serial.print(" Column - ");
+      Serial.print(column);
+      Serial.print(" Value - ");
+      Serial.println(currentButtonState[row][column]); // debugg message
     }
 
-    digitalWrite(rawPinList[raw], HIGH);
+    digitalWrite(rowPinList[row], HIGH);
   }
 }
 
@@ -77,12 +91,14 @@ int compareButtonState(int previous, int currnt)
 {
   int isChanged = 0; // 0 = Non changed, 1 = Changed
 
-  for(int raw = 0; raw < rawCount; raw++)
+  for(int row = 0; row < rowCount; row++)
   {
     for(int column = 0; column < columnCount; column++)
     {
-      if(lastButtonState[raw][column] != currentButtonState[raw][column])
+      if(lastButtonState[row][column] != currentButtonState[row][column])
       {
+        Joystick.setButton(row * rowCount + column, currentButtonState[row][column]);
+        lastButtonState[row][column] = currentButtonState[row][column];
         isChanged = 1;
       }
     }
@@ -104,9 +120,14 @@ void loop() {
   //   }
   // }
 
+  pollingButtonScan();
+  // Serial.println("Button Scan\r\n"); // debugg message
+
   compareButtonState(lastButtonState, currentButtonState);
+  // Serial.println("Button Compare\r\n"); // debugg message
 
-
+  Serial.print("\r\n");
+  Serial.print("\r\n");
 
   delay(50);
 }
